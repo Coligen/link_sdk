@@ -1,0 +1,58 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "useNormalizedOHMUrl": true
+          }
+        },
+        "targetSdkVersion": "5.0.0(12)"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B9C26FBBAA9AAAE5A751468CE359CAF92FF1346580CB2913B0C06F11ABDFA607249F88B24D5FA54",
+          "profile": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.p12",
+          "storePassword": "0000001B42DB54FB1A76602879EC5E94C0FCBFBAC3972C2A5DD5C0B0B4875E1AAE554CFFEDB195E5290AF4"
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

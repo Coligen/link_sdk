@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "link_sdk",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet"
+    ]
+  }
+}
