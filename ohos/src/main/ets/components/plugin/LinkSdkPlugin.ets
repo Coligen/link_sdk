@@ -16,6 +16,7 @@ import { JSON } from '@kit.ArkTS';
 import commonEventManager from '@ohos.commonEventManager';
 import { BusinessError } from '@ohos.base';
 import { LinkEvent } from './LinkEvent';
+import { LinkProgressData } from './LinkProgressData';
 
 export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHandler {
   private static TAG: string = "LinkSdkPlugin";
@@ -24,8 +25,8 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
 
   private context?: Context;
 
-  private linksdkChannel?: MethodChannel;
-  private linksdkEventChannel?: EventChannel;
+  private linkSdkChannel?: MethodChannel;
+  private linkSdkEventChannel?: EventChannel;
 
   private static eventSink?: EventSink;
   private subscriber?: commonEventManager.CommonEventSubscriber;
@@ -39,19 +40,19 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
 
   onAttachedToEngine(binding: FlutterPluginBinding): void {
     this.context = binding.getApplicationContext();
-    this.linksdkChannel = new MethodChannel(binding.getBinaryMessenger(), this.CHANNEL_LINKSDK);
-    this.linksdkChannel?.setMethodCallHandler(this);
+    this.linkSdkChannel = new MethodChannel(binding.getBinaryMessenger(), this.CHANNEL_LINKSDK);
+    this.linkSdkChannel?.setMethodCallHandler(this);
 
-    this.linksdkEventChannel = new EventChannel(binding.getBinaryMessenger(), this.CHANNEL_LINKSDK_EVENT);
-    this.linksdkEventChannel.setStreamHandler(this);
+    this.linkSdkEventChannel = new EventChannel(binding.getBinaryMessenger(), this.CHANNEL_LINKSDK_EVENT);
+    this.linkSdkEventChannel.setStreamHandler(this);
 
     this.createSubscriber();
     this.subscribe();
   }
 
   onDetachedFromEngine(binding: FlutterPluginBinding): void {
-    this.linksdkChannel?.setMethodCallHandler(null);
-    this.linksdkEventChannel?.setStreamHandler(null);
+    this.linkSdkChannel?.setMethodCallHandler(null);
+    this.linkSdkEventChannel?.setStreamHandler(null);
     this.context = undefined;
 
     this.unsubscribe();
@@ -74,13 +75,13 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
 
       if (data.event == Link.EVENT_TYPE_CONNECTION_STATE) {
         let eventData: LinkEvent<Object> = new LinkEvent();
-        eventData.type = data.event;
+        eventData.type = LinkEvent.TYPE_CONNECTION_STATE;
         eventData.payload = JSON.parse(data.data);
 
         LinkSdkPlugin.eventSink?.success(LinkSdkPlugin.keyPrefixProcess(JSON.stringify(eventData)));
       } else if (data.event == Link.EVENT_TYPE_NOTIFY) {
         let eventData: LinkEvent<Object> = new LinkEvent();
-        eventData.type = data.event;
+        eventData.type = LinkEvent.TYPE_NOTIFY;
         eventData.payload = JSON.parse(data.data);
 
         LinkSdkPlugin.eventSink?.success(LinkSdkPlugin.keyPrefixProcess(JSON.stringify(eventData)));
@@ -199,13 +200,20 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
     });
   }
 
+  private static linkProgressCallback(dltotal: number, dlnow: number, ultotal: number, ulnow: number): void {
+    let eventData: LinkEvent<LinkProgressData> = new LinkEvent();
+    eventData.type = LinkEvent.TYPE_PROGRESS;
+    eventData.payload = new LinkProgressData(dltotal, dlnow, ultotal, ulnow);
+
+    LinkSdkPlugin.eventSink?.success(LinkSdkPlugin.keyPrefixProcess(JSON.stringify(eventData)));
+  }
+
   onMethodCall(call: MethodCall, result: MethodResult): void {
     switch (call.method) {
       case "init":
-        hilog.debug(0x0000, LinkSdkPlugin.TAG, 'link sdk init function called');
-
         Link.init(this.context);
-        result.success(null);
+        Link.setProgressCallback(LinkSdkPlugin.linkProgressCallback);
+        result.success(0);
         break;
       case "configNetChannel":
         //仅Android平台有此接口,兼容性保留
@@ -276,11 +284,7 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
         }
         break;
       case "setMenuMultipleState":
-        {
-          let cmd: number = call.argument("cmd");
-          let options: string[] = call.argument("options");
-          this.invokeAsyncMethod(call.method, Link.setMenuMultipleState, null, result, cmd, options);
-        }
+        result.notImplemented();
         break;
       case "isMultipleStorageSupported":
         this.invokeAsyncMethod(call.method, Link.isMultipleStorageSupported, null, result);

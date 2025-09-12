@@ -6,9 +6,8 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@mopen/core": "3.0.3",
-    "@mopen/link-public-dev": "3.1.2",
     "@ohos/flutter_ohos": "har/flutter.har",
+    "sdk_core": "file:../har/sdk_core.har",
     "link_sdk": "file:../har/link_sdk.har"
   }
 }

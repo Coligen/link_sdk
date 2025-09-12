@@ -6,13 +6,17 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   MethodChannelLinkSdk platform = MethodChannelLinkSdk();
-  const MethodChannel channel = MethodChannel('link_sdk');
+  const MethodChannel channel = MethodChannel('mobile.open.sdk/linksdk');
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
       (MethodCall methodCall) async {
-        return '42';
+        if (methodCall.method == 'sdkVersion') {
+          return 'LinkSDK Version Mock';
+        } else {
+          throw UnimplementedError();
+        }
       },
     );
   });
@@ -21,7 +25,7 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
   });
 
-  test('getPlatformVersion', () async {
-    expect(await platform.getPlatformVersion(), '42');
+  test('sdkVersion', () async {
+    expect(await platform.sdkVersion(), 'LinkSDK Version Mock');
   });
 }

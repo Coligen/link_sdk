@@ -1,10 +1,18 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:link_sdk/link_sdk.dart';
+import 'package:sdk_core/sdk_core.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SdkCore.init("2025713681", "0985a99f25017534bf2c39323bf8b6ec4325c9c007f4de80eecac1e1eeab39e9");
+  await SdkCore.initializeOnUserProtocolAgreed();
+  await LinkSdk.init();
+
   runApp(const MyApp());
 }
 
@@ -17,7 +25,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _platformVersion = 'Unknown';
-  final _linkSdkPlugin = LinkSdk();
 
   @override
   void initState() {
@@ -31,8 +38,7 @@ class _MyAppState extends State<MyApp> {
     // Platform messages may fail, so we use a try/catch PlatformException.
     // We also handle the message potentially returning null.
     try {
-      platformVersion =
-          await _linkSdkPlugin.getPlatformVersion() ?? 'Unknown platform version';
+      platformVersion = await LinkSdk.sdkVersion() ?? 'Unknown sdk version';
     } on PlatformException {
       platformVersion = 'Failed to get platform version.';
     }
@@ -55,7 +61,7 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+          child: Text('Running LinkSDK Example Version:\n $_platformVersion\n'),
         ),
       ),
     );

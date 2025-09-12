@@ -16,6 +16,14 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            allowInsecureProtocol true
+            url 'http://120.25.162.154:9981/repository/sdk-public'
+            credentials {
+                username 'mobilesdk'
+                password 'sdk2024@mobile.open'
+            }
+        }
     }
 }
 
@@ -40,6 +48,8 @@ android {
     dependencies {
         testImplementation("junit:junit:4.13.2")
         testImplementation("org.mockito:mockito-core:5.0.0")
+        implementation 'mobile.open.sdk:link-public-dev:3.2.0.202509111820'
+        implementation 'com.google.code.gson:gson:2.8.9'
     }
 
     testOptions {
