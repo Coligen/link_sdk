@@ -7,10 +7,10 @@ part 'link_menu.g.dart';
 
 @JsonSerializable()
 class LinkMenu {
-  final int cmd;
-  final String name;
+  int cmd;
+  String name;
   String? rule;
-  final List<LinkMenuOption> options;
+  List<LinkMenuOption> options;
   int active = 0;
   bool enabled = true;
   int type = CommandType.LINK_CMD_TYPE_NORMAL;

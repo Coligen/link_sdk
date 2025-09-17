@@ -4,8 +4,8 @@ part 'link_result.g.dart';
 
 @JsonSerializable(genericArgumentFactories: true)
 class LinkResult<T> {
-  final int code;
-  final T? data;
+  int code;
+  T? data;
 
   LinkResult({required this.code, required this.data});
 

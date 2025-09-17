@@ -4,12 +4,12 @@ part 'link_software_version.g.dart';
 
 @JsonSerializable()
 class LinkSoftwareVersion {
-  final String company;
-  final String productName;
-  final int type;
-  final int buildDate;
-  final String buildVersion;
-  final String locale;
+  String company;
+  String productName;
+  int type;
+  int buildDate;
+  String buildVersion;
+  String locale;
 
   LinkSoftwareVersion({required this.company, required this.productName, required this.type, required this.buildDate, required this.buildVersion, required this.locale});
 

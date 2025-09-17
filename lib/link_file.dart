@@ -4,13 +4,13 @@ part 'link_file.g.dart';
 
 @JsonSerializable()
 class LinkFile{
-  final String name;
-  final int size;
-  final int timeStamp;
-  final String thumbUrl;
-  final String showUrl;
-  final String downloadUrl;
-  final String extra;
+  String name;
+  int size;
+  int timeStamp;
+  String thumbUrl;
+  String showUrl;
+  String downloadUrl;
+  String extra;
 
   LinkFile({required this.name, required this.size, required this.timeStamp, required this.thumbUrl, required this.showUrl, required this.downloadUrl, required this.extra});
   

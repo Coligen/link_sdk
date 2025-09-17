@@ -4,7 +4,7 @@ part 'link_menu_option.g.dart';
 
 @JsonSerializable()
 class LinkMenuOption {
-  final String name;
+  String name;
   String? extra;
   String? display;
   bool enabled = true;

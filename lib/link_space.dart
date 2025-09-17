@@ -4,8 +4,8 @@ part 'link_space.g.dart';
 
 @JsonSerializable()
 class LinkSpace {
-  final int free;
-  final int total;
+  int free;
+  int total;
 
   LinkSpace({required this.free, required this. total});
 
