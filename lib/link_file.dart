@@ -6,13 +6,13 @@ part 'link_file.g.dart';
 class LinkFile{
   String name;
   int size;
-  int timeStamp;
+  int timestamp;
   String thumbUrl;
   String showUrl;
   String downloadUrl;
   String extra;
 
-  LinkFile({required this.name, required this.size, required this.timeStamp, required this.thumbUrl, required this.showUrl, required this.downloadUrl, required this.extra});
+  LinkFile({required this.name, required this.size, required this.timestamp, required this.thumbUrl, required this.showUrl, required this.downloadUrl, required this.extra});
   
   factory LinkFile.fromJson(Map<String, dynamic> json) => _$LinkFileFromJson(json);
   Map<String, dynamic> toJson() => _$LinkFileToJson(this);

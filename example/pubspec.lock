@@ -167,7 +167,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: a9453f8b8e05dcdd796ccc3084bc4e6117b60a69
+      resolved-ref: "3d6be5000a965e2d753d2b15bde8cb38cb2ee3a2"
       url: "https://github.com/Coligen/sdk_core.git"
     source: git
     version: "0.0.1"

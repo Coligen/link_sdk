@@ -9,7 +9,7 @@ part of 'link_file.dart';
 LinkFile _$LinkFileFromJson(Map<String, dynamic> json) => LinkFile(
       name: json['name'] as String,
       size: (json['size'] as num).toInt(),
-      timeStamp: (json['timeStamp'] as num).toInt(),
+      timestamp: (json['timestamp'] as num).toInt(),
       thumbUrl: json['thumbUrl'] as String,
       showUrl: json['showUrl'] as String,
       downloadUrl: json['downloadUrl'] as String,
@@ -19,7 +19,7 @@ LinkFile _$LinkFileFromJson(Map<String, dynamic> json) => LinkFile(
 Map<String, dynamic> _$LinkFileToJson(LinkFile instance) => <String, dynamic>{
       'name': instance.name,
       'size': instance.size,
-      'timeStamp': instance.timeStamp,
+      'timestamp': instance.timestamp,
       'thumbUrl': instance.thumbUrl,
       'showUrl': instance.showUrl,
       'downloadUrl': instance.downloadUrl,

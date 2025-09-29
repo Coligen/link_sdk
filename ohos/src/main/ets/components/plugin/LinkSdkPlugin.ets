@@ -10,7 +10,7 @@ import {
 } from '@ohos/flutter_ohos';
 import { StreamHandler, EventSink } from '@ohos/flutter_ohos/src/main/ets/plugin/common/EventChannel'
 import { Context } from '@kit.AbilityKit';
-import { Link, ErrorCode, LinkResult } from '@mopen/link-public-dev';
+import { Link, ErrorCode, LinkResult, LinkFile, LinkStreamUrl, LinkMenu, LinkSoftwareVersion, LinkSpace } from '@mopen/link-public-dev';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { JSON } from '@kit.ArkTS';
 import commonEventManager from '@ohos.commonEventManager';
@@ -127,10 +127,10 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
     }
   }
 
-  private onChannelResult(method: string,
+  private async onChannelResult(method: string,
     channelCb: MethodResult,
     result: LinkResult<Any> | null,
-    resultTransfer: ((result: LinkResult<Any>) => string) | null): void {
+    resultTransfer: ((result: LinkResult<Any>) => string) | null) {
     if (result != null) {
       if (result.code != ErrorCode.LINK_ERR_OK && result.code != ErrorCode.LINK_ERR_MENU_UPGRADE) {
         hilog.error(0x0000, LinkSdkPlugin.TAG, 'link call: %{public}s failed, code is: %{public}d', method, result.code);
@@ -153,53 +153,6 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
     }
   }
 
-  private invokeAsyncMethod(name: string,
-    method: ((...params: Any) => Promise<LinkResult<Any>>) | null | undefined,
-    resultTransfer: ((result: LinkResult<Any>) => string) | null,
-    channelCb: MethodResult, ...params: Any) {
-    if (method == null || method == undefined) {
-      hilog.error(0x0000, LinkSdkPlugin.TAG, 'can not invoke method of null or undefined');
-      channelCb.notImplemented();
-      return;
-    }
-
-    hilog.debug(0x0000, LinkSdkPlugin.TAG, 'invoke sdk method: %{public}s', name);
-
-    method(params).then((ret: LinkResult<Any>) => {
-      hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', name, ret.code);
-      this.onChannelResult(name, channelCb, ret, resultTransfer);
-    }).catch((error: BusinessError) => {
-      hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', name, error.message);
-      channelCb.error("", "sdk method: " + name + " invoke error: " + error.message, null);
-    });
-  }
-
-  private invokeAsyncMethodWithSimpleReturn(name: string,
-    method: ((...params: Any) => Promise<Any>) | null | undefined,
-    resultTransfer: ((result: Any) => Any) | null,
-    channelCb: MethodResult, ...params: Any) {
-    if (method == null || method == undefined) {
-      hilog.error(0x0000, LinkSdkPlugin.TAG, 'can not invoke method of null or undefined');
-      channelCb.notImplemented();
-      return;
-    }
-
-    hilog.debug(0x0000, LinkSdkPlugin.TAG, 'invoke sdk method: %{public}s', name);
-
-    method(params).then((ret: Any) => {
-      hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with %{public}s', name, ret);
-
-      if (resultTransfer != null) {
-        channelCb.success(resultTransfer(ret));
-      } else {
-        channelCb.success(ret);
-      }
-    }).catch((error: BusinessError) => {
-      hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', name, error.message);
-      channelCb.error("", "sdk method: " + name + " invoke error: " + error.message, null);
-    });
-  }
-
   private static linkProgressCallback(dltotal: number, dlnow: number, ultotal: number, ulnow: number): void {
     let eventData: LinkEvent<LinkProgressData> = new LinkEvent();
     eventData.type = LinkEvent.TYPE_PROGRESS;
@@ -208,7 +161,7 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
     LinkSdkPlugin.eventSink?.success(LinkSdkPlugin.keyPrefixProcess(JSON.stringify(eventData)));
   }
 
-  onMethodCall(call: MethodCall, result: MethodResult): void {
+  async onMethodCall(call: MethodCall, result: MethodResult) {
     switch (call.method) {
       case "init":
         Link.init(this.context);
@@ -224,244 +177,670 @@ export class LinkSdkPlugin implements FlutterPlugin, MethodCallHandler, StreamHa
         result.notImplemented();
         break;
       case "connect":
-        this.invokeAsyncMethod(call.method, Link.connect, null, result);
+        try {
+          let ret: LinkResult<void> = await Link.connect();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "heartbeatOn":
-        this.invokeAsyncMethodWithSimpleReturn(call.method, Link.heartbeatOn, null, result);
+        try {
+          let ret: void = await Link.heartbeatOn();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned', call.method);
+          result.success(ret);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setHeartbeatInterval":
         let second: number = call.argument("second");
-        this.invokeAsyncMethodWithSimpleReturn(call.method, Link.setHeartbeatInterval, null, result, second);
+
+        try {
+          let ret: void = await Link.setHeartbeatInterval(second);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned', call.method);
+          result.success(ret);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "heartbeatOff":
-        this.invokeAsyncMethodWithSimpleReturn(call.method, Link.heartbeatOff, null, result);
+        try {
+          let ret: void = await Link.heartbeatOff();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned', call.method);
+          result.success(ret);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getStreamUrl":
-        this.invokeAsyncMethod(call.method, Link.getStreamUrl, null, result);
+        try {
+          let ret: LinkResult<Array<LinkStreamUrl>> = await Link.getStreamUrl();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "isPhotoModeSupported":
-        this.invokeAsyncMethod(call.method, Link.isPhotoModeSupported, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.isPhotoModeSupported();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "shouldShowRTMapTracks":
-        this.invokeAsyncMethod(call.method, Link.shouldShowRTMapTracks, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.shouldShowRTMapTracks();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getWorkMode":
-        this.invokeAsyncMethod(call.method, Link.getWorkMode, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getWorkMode();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setWorkMode":
         let workMode: number = call.argument("workMode");
-        this.invokeAsyncMethod(call.method, Link.setWorkMode, null, result, workMode);
+        try {
+          let ret: LinkResult<Number> = await Link.setWorkMode(workMode);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getVideoRecState":
-        this.invokeAsyncMethod(call.method, Link.getVideoRecState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getVideoRecState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setVideoRecState":
         let flag: number = call.argument("flag");
-        this.invokeAsyncMethod(call.method, Link.setVideoRecState, null, result, flag);
+        try {
+          let ret: LinkResult<Number> = await Link.setVideoRecState(flag);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getVideoRecTime":
-        this.invokeAsyncMethod(call.method, Link.getVideoRecTime, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getVideoRecTime();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "takePhoto":
-        this.invokeAsyncMethod(call.method, Link.takePhoto, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.takePhoto();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "snapshot":
-        this.invokeAsyncMethod(call.method, Link.snapshot, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.snapshot();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getMenu":
         let clearCache: boolean = call.argument("clearCache");
-        this.invokeAsyncMethod(call.method, Link.getMenu, null, result, clearCache);
+        try {
+          let ret: LinkResult<Array<LinkMenu>> = await Link.getMenu(clearCache);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getMenuState":
         let cmd: number = call.argument("cmd");
-        this.invokeAsyncMethod(call.method, Link.getMenuState, null, result, cmd);
+        try {
+          let ret: LinkResult<String> = await Link.getMenuState(cmd);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setMenuState":
         {
           let cmd: number = call.argument("cmd");
           let option: string = call.argument("option");
-          this.invokeAsyncMethod(call.method, Link.setMenuState, null, result, cmd, option);
+
+          try {
+            let ret: LinkResult<Number> = await Link.setMenuState(cmd, option);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "setMenuMultipleState":
         result.notImplemented();
         break;
       case "isMultipleStorageSupported":
-        this.invokeAsyncMethod(call.method, Link.isMultipleStorageSupported, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.isMultipleStorageSupported();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "isStorageSelectSupported":
-        this.invokeAsyncMethod(call.method, Link.isStorageSelectSupported, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.isStorageSelectSupported();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "storageSelect":
         let type: number = call.argument("type");
-        this.invokeAsyncMethod(call.method, Link.storageSelect, null, result, type);
+
+        try {
+          let ret: LinkResult<Number> = await Link.storageSelect(type);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getFileDir":
-        this.invokeAsyncMethod(call.method, Link.getFileDir, null, result);
+        try {
+          let ret: LinkResult<Array<Number>> = await Link.getFileDir();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getFileList":
         {
           let type: number = call.argument("type");
           let from: number = call.argument("from");
           let count: number = call.argument("count");
-          this.invokeAsyncMethod(call.method, Link.getFileList, null, result, type, from, count);
+
+          try {
+            let ret: LinkResult<Array<LinkFile>> = await Link.getFileList(type, from, count);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "deleteFile":
         {
           let extra: string = call.argument("extra");
-          this.invokeAsyncMethod(call.method, Link.deleteFile, null, result, extra);
+
+          try {
+            let ret: LinkResult<Number> = await Link.deleteFile(extra);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getFileCopyState":
-        this.invokeAsyncMethod(call.method, Link.getFileCopyState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getFileCopyState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "copyFile":
         {
           let extra: string = call.argument("extra");
-          this.invokeAsyncMethod(call.method, Link.copyFile, null, result, extra);
+
+          try {
+            let ret: LinkResult<Number> = await Link.copyFile(extra);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getFileCopyProgress":
-        this.invokeAsyncMethod(call.method, Link.getFileCopyProgress, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getFileCopyProgress();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "stopFileCopy":
-        this.invokeAsyncMethod(call.method, Link.stopFileCopy, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.stopFileCopy();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getExternalStorageState":
-        this.invokeAsyncMethod(call.method, Link.getExternalStorageState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getExternalStorageState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "shouldShowExternalStorageSpace":
-        this.invokeAsyncMethod(call.method, Link.shouldShowExternalStorageSpace, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.shouldShowExternalStorageSpace();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getStorageSpace":
         {
           let type: number = call.argument("type");
-          this.invokeAsyncMethod(call.method, Link.getStorageSpace, null, result, type);
+
+          try {
+            let ret: LinkResult<LinkSpace> = await Link.getStorageSpace(type);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "isInternalStorageFormatSupported":
-        this.invokeAsyncMethod(call.method, Link.isInternalStorageFormatSupported, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.isInternalStorageFormatSupported();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "storageFormat":
         {
           let type: number = call.argument("type");
-          this.invokeAsyncMethod(call.method, Link.storageFormat, null, result, type);
+
+          try {
+            let ret: LinkResult<Number> = await Link.storageFormat(type);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "isFileGPSInfoSupported":
-        this.invokeAsyncMethod(call.method, Link.isFileGPSInfoSupported, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.isFileGPSInfoSupported();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getFileGPSInfo":
         {
           let extra: string = call.argument("extra");
-          this.invokeAsyncMethod(call.method, Link.getFileGPSInfo, null, result, extra);
+
+          try {
+            let ret: LinkResult<String> = await Link.getFileGPSInfo(extra);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "timeSync":
-        this.invokeAsyncMethod(call.method, Link.timeSync, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.timeSync();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getWiFiSSID":
-        this.invokeAsyncMethod(call.method, Link.getWiFiSSID, null, result);
+        try {
+          let ret: LinkResult<String> = await Link.getWiFiSSID();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getWiFiSSIDFromDevice":
-        this.invokeAsyncMethod(call.method, Link.getWiFiSSIDFromDevice, null, result);
+        try {
+          let ret: LinkResult<String> = await Link.getWiFiSSIDFromDevice();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setWiFiSSID":
         {
           let ssid: string = call.argument("ssid");
-          this.invokeAsyncMethod(call.method, Link.setWiFiSSID, null, result, ssid);
+
+          try {
+            let ret: LinkResult<Number> = await Link.setWiFiSSID(ssid);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getWiFiPassword":
-        this.invokeAsyncMethod(call.method, Link.getWiFiPassword, null, result);
+        try {
+          let ret: LinkResult<String> = await Link.getWiFiPassword();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setWiFiPassword":
         {
           let pwd: string = call.argument("pwd");
-          this.invokeAsyncMethod(call.method, Link.setWiFiPassword, null, result, pwd);
+
+          try {
+            let ret: LinkResult<Number> = await Link.setWiFiPassword(pwd);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "systemReset":
-        this.invokeAsyncMethod(call.method, Link.systemReset, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.systemReset();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "systemVersion":
         {
           let type: number = call.argument("type");
-          this.invokeAsyncMethod(call.method, Link.systemVersion, null, result, type);
+
+          try {
+            let ret: LinkResult<String> = await Link.systemVersion(type);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getBatteryState":
-        this.invokeAsyncMethod(call.method, Link.getBatteryState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getBatteryState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setPIRInterval":
         let interval: number = call.argument("interval");
-        this.invokeAsyncMethod(call.method, Link.setPIRInterval, null, result, interval);
+
+        try {
+          let ret: LinkResult<Number> = await Link.setPIRInterval(interval);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "setPIRMonitoringPeriodTime":
         let index: number = call.argument("index");
         let begin: string = call.argument("begin");
         let end: string = call.argument("end");
-        this.invokeAsyncMethod(call.method, Link.setPIRMonitoringPeriodTime, null, result, index, begin, end);
+
+        try {
+          let ret: LinkResult<Number> = await Link.setPIRMonitoringPeriodTime(index, begin, end);
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getOTASupportState":
-        this.invokeAsyncMethod(call.method, Link.getOTASupportState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getOTASupportState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getSoftwareVersion":
         {
           let type: number = call.argument("type");
-          this.invokeAsyncMethod(call.method, Link.getSoftwareVersion, null, result, type);
+
+          try {
+            let ret: LinkResult<LinkSoftwareVersion> = await Link.getSoftwareVersion(type);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "sendUpgradeFile":
         {
           let type: number = call.argument("type");
           let filePath: string = call.argument("filePath");
-          this.invokeAsyncMethod(call.method, Link.sendUpgradeFile, null, result, type, filePath);
+
+          try {
+            let ret: LinkResult<Number> = await Link.sendUpgradeFile(type, filePath);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "softwareUpdate":
         {
           let type: number = call.argument("type");
           let filePath: string = call.argument("filePath");
-          this.invokeAsyncMethod(call.method, Link.softwareUpdate, null, result, type, filePath);
+
+          try {
+            let ret: LinkResult<Number> = await Link.softwareUpdate(type, filePath);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "recLock":
-        this.invokeAsyncMethod(call.method, Link.recLock, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.recLock();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "changeFileLockState":
         {
           let extra: string = call.argument("extra");
-          this.invokeAsyncMethod(call.method, Link.changeFileLockState, null, result, extra);
+
+          try {
+            let ret: LinkResult<Number> = await Link.changeFileLockState(extra);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getCameraState":
         {
           let index: number = call.argument("index");
-          this.invokeAsyncMethod(call.method, Link.getCameraState, null, result, index);
+
+          try {
+            let ret: LinkResult<Number> = await Link.getCameraState(index);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getChipId":
-        this.invokeAsyncMethod(call.method, Link.getChipId, null, result);
+        try {
+          let ret: LinkResult<String> = await Link.getChipId();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getConnectionType":
-        this.invokeAsyncMethod(call.method, Link.getConnectionType, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getConnectionType();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getConnectionState":
-        this.invokeAsyncMethod(call.method, Link.getConnectionState, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getConnectionState();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "checkCapability":
         {
           let type: number = call.argument("type");
-          this.invokeAsyncMethod(call.method, Link.checkCapability, null, result, type);
+
+          try {
+            let ret: LinkResult<Boolean> = await Link.checkCapability(type);
+            hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+            await this.onChannelResult(call.method, result, ret, null);
+          } catch(error) {
+            hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+            result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+          }
         }
         break;
       case "getRemainingRecTime":
-        this.invokeAsyncMethod(call.method, Link.getRemainingRecTime, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getRemainingRecTime();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "getRemainingPhotoNumber":
-        this.invokeAsyncMethod(call.method, Link.getRemainingPhotoNumber, null, result);
+        try {
+          let ret: LinkResult<Number> = await Link.getRemainingPhotoNumber();
+          hilog.debug(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s, returned with code %{public}d', call.method, ret.code);
+          await this.onChannelResult(call.method, result, ret, null);
+        } catch(error) {
+          hilog.error(0x0000, LinkSdkPlugin.TAG, 'sdk method: %{public}s returned with error: %{public}s', call.method, error.message);
+          result.error("", "sdk method: " + call.method + " invoke error: " + error.message, null);
+        }
         break;
       case "disconnect":
         Link.disconnect();
