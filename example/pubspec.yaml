@@ -11,7 +11,7 @@ dependencies:
   sdk_core:
     git:
       url: https://github.com/Coligen/sdk_core.git
-      ref: main
+      ref: remove_android_impl
   link_sdk:
     path: ../
 
