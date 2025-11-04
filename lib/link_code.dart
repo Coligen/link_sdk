@@ -138,6 +138,8 @@ class Command {
   static const int LINK_CMD_MCU_VERSION = 4037;
   static const int LINK_CMD_F_SENSOR_VERSION = 4038;
   static const int LINK_CMD_R_SENSOR_VERSION = 4039;
+  static const int LINK_CMD_UPLOAD_COLLISION_DATA = 4042;
+  static const int LINK_CMD_STORAGE_LOCATION = 4043;
 }
 
 class CommandType {
