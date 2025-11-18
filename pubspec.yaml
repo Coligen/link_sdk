@@ -23,10 +23,5 @@ dev_dependencies:
 flutter:
   plugin:
     platforms:
-      android:
-        package: mobile.open.plugin.link_sdk
-        pluginClass: LinkSdkPlugin
       ohos:
-        pluginClass: LinkSdkPlugin
-      ios:
         pluginClass: LinkSdkPlugin
