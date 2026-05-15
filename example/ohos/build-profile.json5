@@ -32,11 +32,11 @@
         "material": {
           "certpath": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B9C26FBBAA9AAAE5A751468CE359CAF92FF1346580CB2913B0C06F11ABDFA607249F88B24D5FA54",
+          "keyPassword": "0000001BFAA193457B14F85BDC25C5594C6154592D2F3155EAA8E2635955D40391D72F6CB80F177B50831E",
           "profile": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\River\\.ohos\\config\\default_ohos_ecCtPqGOn0z1LnrVI5oReG-HwAdeTmDkLuOohNl5SIM=.p12",
-          "storePassword": "0000001B42DB54FB1A76602879EC5E94C0FCBFBAC3972C2A5DD5C0B0B4875E1AAE554CFFEDB195E5290AF4"
+          "storePassword": "0000001B48282DBE47720EB056394312914D0630B94A315BAC3059F7C750F7C59F07A70142A20CE4ACB9FC"
         }
       }
     ]
